@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import "dashboard.dart";
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -54,10 +55,10 @@ class _AuthScreenState extends State<AuthScreen> {
           password: password,
         );
         
-        // Normally, you navigate away here using Navigator.pushReplacement
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login Successful!')),
+        if (mounted) {  
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
           );
         }
       } else {
@@ -79,7 +80,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Registration Successful! Please check your email.')),
           );
-          // Optional: automatically switch to login screen after successful registration
+          // automatically switch to login screen after successful registration
           setState(() {
             _isLogin = true;
           });
@@ -116,7 +117,7 @@ class _AuthScreenState extends State<AuthScreen> {
           padding: const EdgeInsets.all(24),
           child: Card(
             elevation: 4, // Adds a subtle drop shadow 
-            color: Colors.white,
+            color: const Color(0xFFF9FAF6),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(24.0),
