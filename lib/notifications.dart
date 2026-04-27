@@ -22,6 +22,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _setupRealtimeNotifications(); 
   }
 
+  // --- SORTING LOGIC ---
+  void _sortNotifications() {
+    _notifications.sort((a, b) {
+      // 1. Unread items (Important) ALWAYS go to the top
+      bool aIsRead = a['is_read'] ?? true;
+      bool bIsRead = b['is_read'] ?? true;
+      
+      if (!aIsRead && bIsRead) return -1; // 'a' is unread, move it up
+      if (aIsRead && !bIsRead) return 1;  // 'b' is unread, move it up
+
+      // 2. If both have the same read status, sort by Date (Newest first)
+      DateTime dateA = DateTime.parse(a['created_at']);
+      DateTime dateB = DateTime.parse(b['created_at']);
+      return dateB.compareTo(dateA); 
+    });
+  }
+
 void _setupRealtimeNotifications() {
     final userId = supabase.auth.currentUser!.id;
 
@@ -33,10 +50,10 @@ void _setupRealtimeNotifications() {
         .order('created_at', ascending: false)
         .listen((List<Map<String, dynamic>> data) {
       
-      // This block fires instantly every time a row is INSERTED, UPDATED, or DELETED in Supabase!
       if (mounted) {
         setState(() {
-          _notifications = data;
+          _notifications = data; 
+          _sortNotifications();  
           _isLoading = false;
         });
       }
@@ -50,6 +67,95 @@ void _setupRealtimeNotifications() {
   void dispose() {
     _notificationSubscription.cancel(); // Close the connection when leaving the screen
     super.dispose();
+  }
+
+  // --- NOTIFICATION ACTIONS ---
+  
+Future<void> _toggleReadStatus(dynamic id, bool currentStatus) async {
+    final bool newStatus = !currentStatus;
+
+    // --- OPTIMISTIC UI UPDATE ---
+    setState(() {
+      final index = _notifications.indexWhere((note) => note['id'] == id);
+      if (index != -1) {
+        // Create a safe, mutable copy of the notification map
+        Map<String, dynamic> updatedNote = Map<String, dynamic>.from(_notifications[index]);
+        
+        // Flip the read status
+        updatedNote['is_read'] = newStatus;
+        
+        // Replace the old note with the updated one
+        _notifications[index] = updatedNote;
+        
+        // INSTANTLY RE-SORT THE LIST! 
+        // This forces it to jump into (or out of) the Important group at the top.
+        _sortNotifications(); 
+      }
+    });
+
+    // --- DATABASE UPDATE ---
+    try {
+      await supabase
+          .from('notifications')
+          .update({'is_read': newStatus})
+          .eq('id', id);
+    } catch (e) {
+      print('UPDATE ERROR: $e');
+      
+      // Revert if the database fails
+      setState(() {
+        final index = _notifications.indexWhere((note) => note['id'] == id);
+        if (index != -1) {
+          Map<String, dynamic> revertedNote = Map<String, dynamic>.from(_notifications[index]);
+          revertedNote['is_read'] = currentStatus;
+          _notifications[index] = revertedNote;
+          _sortNotifications(); // Re-sort back to original state
+        }
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update status.')),
+        );
+      }
+    }
+  }
+
+Future<void> _deleteNotification(dynamic id) async {
+    // Store a backup of the notification in case we need to revert
+    final int index = _notifications.indexWhere((note) => note['id'] == id);
+    final dynamic deletedNote = index != -1 ? _notifications[index] : null;
+
+    if (index == -1) return;
+
+    // --- OPTIMISTIC UI UPDATE ---
+    // Instantly remove it from the screen
+    setState(() {
+      _notifications.removeAt(index);
+    });
+
+    // --- DATABASE DELETE ---
+    try {
+      await supabase
+          .from('notifications')
+          .delete()
+          .eq('id', id);
+    } catch (e) {
+      print('DELETE ERROR: $e');
+      
+      // If the database fails, put the notification back on the screen!
+      setState(() {
+        if (deletedNote != null) {
+          _notifications.insert(index, deletedNote);
+        }
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to delete notification.')),
+        );
+      }
+    }
   }
 
   // --- 1. YOUTUBE STYLE DATE FORMATTING ---
@@ -157,7 +263,7 @@ void _setupRealtimeNotifications() {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white, // YouTube/PayPal use pure white backgrounds mostly
+      backgroundColor: Colors.white, 
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -196,7 +302,7 @@ void _setupRealtimeNotifications() {
                         ...items.map((note) {
                           final isRead = note['is_read'] as bool;
                           return Container(
-                            // Optional: Give unread items a very subtle background tint like YouTube does
+                            // Give unread items a very subtle background tint like YouTube does
                             color: isRead ? Colors.transparent : Colors.blue.withOpacity(0.05),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -216,11 +322,48 @@ void _setupRealtimeNotifications() {
                                 note['message'],
                                 style: const TextStyle(color: Colors.black87, height: 1.3),
                               ),
-                              trailing: IconButton(
+                              // YouTube style three-dot menu
+                              trailing: PopupMenuButton<String>(
                                 icon: const Icon(Icons.more_vert, color: Colors.grey),
-                                onPressed: () {
-                                  // Can add delete/mark-as-read options here later
+                                color: Colors.white, // Keeps the dropdown background clean
+                                onSelected: (value) {
+                                  // This triggers when the user taps an option
+                                  if (value == 'toggle_read') {
+                                    _toggleReadStatus(note['id'], isRead);
+                                  } else if (value == 'delete') {
+                                    _deleteNotification(note['id']);
+                                  }
                                 },
+                                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                  
+                                  // OPTION 1: Mark as Read / Unread
+                                  PopupMenuItem<String>(
+                                    value: 'toggle_read',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          isRead ? Icons.mark_email_unread_outlined : Icons.mark_email_read_outlined, 
+                                          color: Colors.black87, 
+                                          size: 20
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(isRead ? 'Mark as unread' : 'Mark as read'),
+                                      ],
+                                    ),
+                                  ),
+                                  
+                                  // OPTION 2: Delete
+                                  const PopupMenuItem<String>(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                                        SizedBox(width: 12),
+                                        Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
