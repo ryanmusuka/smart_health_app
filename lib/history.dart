@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart'; // <-- Added Shimmer import
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -338,6 +339,93 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   // --- UI WIDGETS ---
+
+  // <-- THE NEW SKELETON LOADER FOR HISTORY -->
+  Widget _buildSkeletonLoader() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: 40),
+        itemCount: 3, // Show 3 fake months/groups
+        itemBuilder: (context, index) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Fake Group Header (Month/Year)
+              Padding(
+                padding: const EdgeInsets.only(left: 16, right: 16, top: 24, bottom: 8),
+                child: Container(
+                  width: 120,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              // 2 Fake Claim Cards per group
+              ...List.generate(2, (cardIndex) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+                ),
+                child: Row(
+                  children: [
+                    // Fake Icon Avatar
+                    Container(
+                      width: 48, height: 48,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Fake Text Column
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: 140,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Fake Amount
+                    Container(
+                      width: 60,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ))
+            ],
+          );
+        },
+      ),
+    );
+  }
   
   Widget _buildFilterChip(String label, Color color) {
     final isActive = _activeFilter == label;
@@ -533,7 +621,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           // --- 3. TIMELINE & CLAIM CARDS ---
           Expanded(
             child: _isLoading 
-              ? const Center(child: CircularProgressIndicator())
+              ? _buildSkeletonLoader() // <-- Replaced CircularProgressIndicator here
               : claimsToDisplay.isEmpty
                 ? Center(
                     child: Column(

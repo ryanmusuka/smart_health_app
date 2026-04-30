@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 import "notifications.dart";
 import "profile.dart";
 import "history.dart";
+import "submit.dart";
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -13,9 +15,9 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   // --- STATE VARIABLES ---
-  // Removed _selectedIndex since Dashboard is now a single, standalone screen
   bool _isLoading = true;
-  
+  int _currentIndex = 0;
+
   // User Data
   String _firstName = '';
   String _membershipNumber = 'Pending...';
@@ -23,6 +25,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Claims Data
   List<dynamic> _recentClaims = [];
   int _pendingCount = 0;
+  
+  // Notification State
+  bool _hasUnreadNotifications = false; // <-- ADDED: Track unread status
 
   final supabase = Supabase.instance.client;
 
@@ -59,12 +64,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .eq('user_id', userId)
           .eq('status', 'pending');
 
+      // 4. Check for unread notifications <-- ADDED
+      final unreadNotifications = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('is_read', false)
+          .limit(1); // We only need to check if at least one exists
+
       if (mounted) {
         setState(() {
           _firstName = profile['first_name'] ?? 'User';
           _membershipNumber = profile['membership_number'] ?? 'Not Assigned';
           _recentClaims = claims;
           _pendingCount = pendingClaims.length;
+          _hasUnreadNotifications = unreadNotifications.isNotEmpty; // Set status
           _isLoading = false;
         });
       }
@@ -84,11 +98,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _navigateToNotifications() {
-    Navigator.push(
+  // Update this to await the return and refresh the notification status
+  Future<void> _navigateToNotifications() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const NotificationsScreen()),
     );
+    // Re-fetch data when returning to clear the badge if they read them
+    _fetchDashboardData(); 
   }
 
   void _navigateToHistory() {
@@ -98,13 +115,130 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _navigateToSubmitClaim() {
-    // TODO: Add Navigator.push for the SubmitClaimScreen later
-    print("Submit Claim clicked");
+ 
+  Future<void> _navigateToSubmitClaim() async {
+    // 1. Await the result of the Submit Screen
+    final bool? shouldRefresh = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SubmitClaimScreen()), 
+    );
+
+    // 2. If it returns true (a successful submission), refresh the data!
+    if (shouldRefresh == true) {
+      setState(() {
+        _isLoading = true; // Show loading spinner while fetching
+      });
+      await _fetchDashboardData(); // Refreshes Profile, Recent Claims, and Pending Count
+    }
+  }
+
+  // --- BOTTOM SHEET (CLAIM DETAILS) ---
+  void _showClaimDetails(Map<String, dynamic> claim) {
+    final amount = double.tryParse(claim['amount'].toString()) ?? 0.0;
+    final status = (claim['status'] ?? 'pending').toString().toLowerCase();
+    
+    double covered = 0.0;
+    double shortfall = 0.0;
+    String rejectionReason = '';
+
+    if (status == 'approved') {
+      covered = amount;
+    } else if (status == 'rejected') {
+      shortfall = amount;
+      rejectionReason = "Exceeded annual limit.";
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4, 
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(claim['provider_name'] ?? 'Unknown Provider', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(claim['treatment_description'] ?? 'Medical Service', style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+              const SizedBox(height: 24),
+              
+              // Breakdown Box
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200)
+                ),
+                child: Column(
+                  children: [
+                    _buildBreakdownRow('Total Billed', amount, isBold: true),
+                    const Divider(height: 24),
+                    _buildBreakdownRow('Covered by Aid', covered, color: Colors.green),
+                    const SizedBox(height: 12),
+                    _buildBreakdownRow('Patient Shortfall', shortfall, color: shortfall > 0 ? Colors.red : Colors.black87),
+                  ],
+                ),
+              ),
+
+              if (status == 'rejected') ...[
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Rejection Reason', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text(rejectionReason, style: TextStyle(color: Colors.red.shade900, fontSize: 14)),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              ],
+              const SizedBox(height: 40),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
+  Widget _buildBreakdownRow(String label, double amount, {Color? color, bool isBold = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(fontSize: 15, color: Colors.grey.shade700, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+        Text(
+          NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(amount),
+          style: TextStyle(fontSize: 16, color: color ?? Colors.black87, fontWeight: isBold ? FontWeight.bold : FontWeight.w600),
+        ),
+      ],
+    );
   }
 
   // --- WIDGET BUILDERS ---
-
   Widget _buildHomeDashboard() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20.0),
@@ -167,7 +301,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (_recentClaims.isEmpty)
             const Center(child: Padding(padding: EdgeInsets.all(20.0), child: Text('No recent claims found.')))
           else
-            ListView.builder(
+           ListView.builder(
               shrinkWrap: true, 
               physics: const NeverScrollableScrollPhysics(), 
               itemCount: _recentClaims.length,
@@ -180,6 +314,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 2,
                   child: ListTile(
+                    onTap: () => _showClaimDetails(claim),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     leading: CircleAvatar(
                       backgroundColor: Colors.blueAccent.withOpacity(0.1),
@@ -234,9 +369,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.black, size: 28),
-            onPressed: _navigateToNotifications,
+          // THE NEW NOTIFICATION BADGE STACK
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, color: Colors.black, size: 28),
+                onPressed: _navigateToNotifications,
+              ),
+              if (_hasUnreadNotifications)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.account_circle, color: Colors.black, size: 30),
@@ -255,10 +409,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
 
       // --- THE BODY ---
-      // Removed the ternary operator that toggled the history tab
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
-          : _buildHomeDashboard(),
+      body: _currentIndex == 0
+          ? (_isLoading 
+              ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
+              : _buildHomeDashboard())
+          : const HistoryScreen(), 
 
       // --- SUBMIT CLAIM FAB (Center Docked) ---
       floatingActionButton: FloatingActionButton(
@@ -271,7 +426,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-      // BOTTOM NAVIGATION BAR ---
+     // BOTTOM NAVIGATION BAR ---
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 2.0, 
@@ -283,15 +438,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: <Widget>[
               // Left side: Home Tab
-              const Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.home_filled, 
-                      color: Colors.blueAccent, // Always blue because this is the Dashboard
-                    ),
-                   ],
+              Expanded(
+                child: InkWell( 
+                  onTap: () => setState(() => _currentIndex = 0), 
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.home_filled, 
+                        color: _currentIndex == 0 ? Colors.blueAccent : Colors.grey, 
+                      ),
+                    ],
+                  ),
                 ),
               ),
               
@@ -300,15 +458,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Right side: History Tab
               Expanded(
                 child: InkWell(
-                  onTap: _navigateToHistory, // Now pushes to the new screen!
-                  child: const Column(
+                  onTap: () => setState(() => _currentIndex = 1), 
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.history, 
-                        color: Colors.grey, // Grey because it acts as a button leading to a new screen
+                        color: _currentIndex == 1 ? Colors.blueAccent : Colors.grey, 
                       ),
-                       ],
+                    ],
                   ),
                 ),
               ),
