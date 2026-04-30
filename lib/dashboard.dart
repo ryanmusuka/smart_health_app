@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import "notifications.dart";
+import "profile.dart";
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -74,10 +75,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // --- NAVIGATION HELPERS (Lecture 8: Navigation) ---
+  // --- NAVIGATION HELPERS ---
   void _navigateToProfile() {
-    // TODO: Add Navigator.push for the ProfileScreen later
-    print("Profile clicked"); 
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+    );
   }
 
   void _navigateToNotifications() {

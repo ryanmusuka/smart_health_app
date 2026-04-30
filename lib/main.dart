@@ -32,7 +32,8 @@ class SmartHealthApp extends StatelessWidget {
       
       // 2. Use colorScheme instead of primarySwatch
       colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.blue,
+        seedColor: Colors.blueAccent,
+        secondary: Colors.blueGrey, // Secondary color for accents
       ),
     ),
     home: const AuthScreen(),

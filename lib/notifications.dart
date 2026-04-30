@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shimmer/shimmer.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -41,8 +42,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
 void _setupRealtimeNotifications() {
     final userId = supabase.auth.currentUser!.id;
-
-    // We use .stream() instead of .select() to open a live WebSocket connection
+    
     _notificationSubscription = supabase
         .from('notifications')
         .stream(primaryKey: ['id'])
@@ -87,9 +87,7 @@ Future<void> _toggleReadStatus(dynamic id, bool currentStatus) async {
         // Replace the old note with the updated one
         _notifications[index] = updatedNote;
         
-        // INSTANTLY RE-SORT THE LIST! 
-        // This forces it to jump into (or out of) the Important group at the top.
-        _sortNotifications(); 
+       _sortNotifications(); 
       }
     });
 
@@ -158,7 +156,6 @@ Future<void> _deleteNotification(dynamic id) async {
     }
   }
 
-  // --- 1. YOUTUBE STYLE DATE FORMATTING ---
   String _getGroupHeader(Map<String, dynamic> note) {
     if (note['is_read'] == false) {
       return 'Important';
@@ -183,7 +180,7 @@ Future<void> _deleteNotification(dynamic id) async {
     }
   }
 
-  // --- 2. PAYPAL STYLE ICONS (Flat & Black) ---
+  // --- 2. ICONS (Flat & Black) ---
   Widget _buildPayPalIcon(String title) {
     IconData iconData = Icons.notifications_none_outlined;
     final lowerTitle = title.toLowerCase();
@@ -210,46 +207,73 @@ Future<void> _deleteNotification(dynamic id) async {
 
   // --- 3. THE SKELETON LOADER ---
   Widget _buildSkeletonLoader() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      itemCount: 8, // Show 8 fake items while loading
-      itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Fake Icon
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  shape: BoxShape.circle,
+    // 1. Wrap your entire ListView in the Shimmer widget
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,      // The default static color
+      highlightColor: Colors.grey.shade100, // The light color that sweeps across
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        itemCount: 8, 
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Fake Icon
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    color: Colors.white, // Changed to white so Shimmer can paint over it
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              // Fake Text Lines
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 4),
-                    Container(width: 200, height: 16, color: Colors.grey[300]),
-                    const SizedBox(height: 8),
-                    Container(width: double.infinity, height: 14, color: Colors.grey[200]),
-                    const SizedBox(height: 4),
-                    Container(width: 150, height: 14, color: Colors.grey[200]),
-                  ],
-                ),
-              )
-            ],
-          ),
-        );
-      },
+                const SizedBox(width: 16),
+                // Fake Text Lines
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      // Notice the colors are all white now, Shimmer handles the grey!
+                      Container(
+                        width: 200, 
+                        height: 16, 
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4), // Added slight rounding for a modern look
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity, 
+                        height: 14, 
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 150, 
+                        height: 14, 
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
-
+  
   @override
   Widget build(BuildContext context) {
     // Group the notifications based on our logic
