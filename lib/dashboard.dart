@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import "notifications.dart";
 import "profile.dart";
+import "history.dart";
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -12,7 +13,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   // --- STATE VARIABLES ---
-  int _selectedIndex = 0; // 0 for Home, 1 for History
+  // Removed _selectedIndex since Dashboard is now a single, standalone screen
   bool _isLoading = true;
   
   // User Data
@@ -31,7 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _fetchDashboardData();
   }
 
-  // --- ASYNCHRONOUS DATA FETCHING (Lecture 4: Dart Programming) ---
+  // --- ASYNCHRONOUS DATA FETCHING ---
   Future<void> _fetchDashboardData() async {
     try {
       final userId = supabase.auth.currentUser!.id;
@@ -87,8 +88,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-  );
-}
+    );
+  }
+
+  void _navigateToHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const HistoryScreen()),
+    );
+  }
 
   void _navigateToSubmitClaim() {
     // TODO: Add Navigator.push for the SubmitClaimScreen later
@@ -204,12 +212,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildHistoryTab() {
-    return const Center(
-      child: Text('Full Claims History will go here', style: TextStyle(fontSize: 18)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -246,16 +248,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
           child: Container(
-            color: Colors.blueAccent, // Your core color
-            height: 3.0, // Thickness of the border
+            color: Colors.blueAccent,
+            height: 3.0, 
           ),
         ),
       ),
 
       // --- THE BODY ---
+      // Removed the ternary operator that toggled the history tab
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
-          : _selectedIndex == 0 ? _buildHomeDashboard() : _buildHistoryTab(),
+          : _buildHomeDashboard(),
 
       // --- SUBMIT CLAIM FAB (Center Docked) ---
       floatingActionButton: FloatingActionButton(
@@ -266,13 +269,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: const Icon(Icons.add, size: 32, color: Colors.white),
       ),
       
-      // Positions the FAB in the center of the bottom edge
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
       // BOTTOM NAVIGATION BAR ---
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
-        notchMargin: 2.0, // Creates the gap between the FAB and the bar
+        notchMargin: 2.0, 
         color: const Color(0xFFF9FAF6),
         elevation: 10,
         child: SizedBox(
@@ -281,34 +283,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: <Widget>[
               // Left side: Home Tab
-              Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _selectedIndex = 0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.home_filled, 
-                        color: _selectedIndex == 0 ? Colors.blueAccent : Colors.grey,
-                      ),
-                     ],
-                  ),
+              const Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.home_filled, 
+                      color: Colors.blueAccent, // Always blue because this is the Dashboard
+                    ),
+                   ],
                 ),
               ),
               
-              // Middle spacing for the docked FAB
               const Spacer(), 
               
               // Right side: History Tab
               Expanded(
                 child: InkWell(
-                  onTap: () => setState(() => _selectedIndex = 1),
-                  child: Column(
+                  onTap: _navigateToHistory, // Now pushes to the new screen!
+                  child: const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.history, 
-                        color: _selectedIndex == 1 ? Colors.blueAccent : Colors.grey,
+                        color: Colors.grey, // Grey because it acts as a button leading to a new screen
                       ),
                        ],
                   ),
