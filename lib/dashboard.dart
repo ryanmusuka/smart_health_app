@@ -29,8 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _pendingCount = 0;
   
   // Notification State
-  bool _hasUnreadNotifications = false; // <-- ADDED: Track unread status
-
+  bool _hasUnreadNotifications = false; 
   final supabase = Supabase.instance.client;
 
   @override
@@ -44,14 +43,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final userId = supabase.auth.currentUser!.id;
 
-      // 1. Fetch Profile Info
       final profile = await supabase
           .from('profiles')
           .select('first_name, membership_number')
           .eq('id', userId)
           .single();
 
-      // 2. Fetch Recent Claims 
       final claims = await supabase
           .from('claims')
           .select()
@@ -59,20 +56,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .order('created_at', ascending: false)
           .limit(3);
 
-      // 3. Count Pending Claims
       final pendingClaims = await supabase
           .from('claims')
           .select('id')
           .eq('user_id', userId)
           .eq('status', 'pending');
 
-      // 4. Check for unread notifications <-- ADDED
+      // Check for unread notifications 
       final unreadNotifications = await supabase
           .from('notifications')
           .select('id')
           .eq('user_id', userId)
           .eq('is_read', false)
-          .limit(1); // We only need to check if at least one exists
+          .limit(1); 
 
       if (mounted) {
         setState(() {
@@ -80,7 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _membershipNumber = profile['membership_number'] ?? 'Not Assigned';
           _recentClaims = claims;
           _pendingCount = pendingClaims.length;
-          _hasUnreadNotifications = unreadNotifications.isNotEmpty; // Set status
+          _hasUnreadNotifications = unreadNotifications.isNotEmpty;
           _isLoading = false;
         });
       }
@@ -100,13 +96,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Update this to await the return and refresh the notification status
-  Future<void> _navigateToNotifications() async {
+ Future<void> _navigateToNotifications() async {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const NotificationsScreen()),
     );
-    // Re-fetch data when returning to clear the badge if they read them
     _fetchDashboardData(); 
   }
 
@@ -119,18 +113,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
  
   Future<void> _navigateToSubmitClaim() async {
-    // 1. Await the result of the Submit Screen
+    // Await the result of the Submit Screen
     final bool? shouldRefresh = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const SubmitClaimScreen()), 
     );
 
-    // 2. If it returns true (a successful submission), refresh the data!
+    // If it returns true (a successful submission), refresh the data!
     if (shouldRefresh == true) {
       setState(() {
         _isLoading = true; 
       });
-      await _fetchDashboardData(); // Refreshes Profile, Recent Claims, and Pending Count
+      await _fetchDashboardData(); 
     }
   }
 
@@ -241,8 +235,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // --- WIDGET BUILDERS ---
-
-  // <-- ADDED: SKELETON LOADER FOR DASHBOARD -->
   Widget _buildSkeletonLoader() {
     return Shimmer.fromColors(
       baseColor: Colors.grey.shade300,
@@ -252,7 +244,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Fake Greeting
             Container(
               width: 200,
               height: 32,
@@ -263,7 +254,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Fake Membership Card
+            // Membership Card
             Container(
               width: double.infinity,
               height: 180,
@@ -274,7 +265,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 30),
 
-            // Fake Recent Activity Title
+            // Recent Activity Title
             Container(
               width: 140,
               height: 24,
@@ -312,7 +303,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 20),
 
-          // 2. Premium Membership Card (Using Core Colors)
+          // 2. Premium Membership Card
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
@@ -412,8 +403,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      
-      // --- THE APP BAR ---
       appBar: AppBar(
   backgroundColor: Colors.transparent,
   elevation: 0,
@@ -427,7 +416,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         style: GoogleFonts.outfit(
           color: Colors.blueAccent, 
           fontWeight: FontWeight.w900, 
-          fontSize: 24, // Shrinks down gracefully to fit the app bar
+          fontSize: 24, 
           letterSpacing: -0.5,
           height: 1.0, 
         ),
@@ -436,7 +425,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ),
         
         actions: [
-          // THE NEW NOTIFICATION BADGE STACK
+          // NOTIFICATION BADGE STACK
           Stack(
             alignment: Alignment.center,
             children: [
@@ -478,7 +467,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // --- THE BODY ---
       body: _currentIndex == 0
           ? (_isLoading 
-              ? _buildSkeletonLoader() // <-- CHANGED: Used Shimmer instead of CircularProgressIndicator
+              ? _buildSkeletonLoader() 
               : _buildHomeDashboard())
           : const HistoryScreen(), 
 

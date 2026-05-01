@@ -163,7 +163,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
       final amount = double.parse(_amountController.text.replaceAll(',', ''));
       final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-      // 1. Insert Claim into public.claims
+      // Insert Claim into public.claims
       final claimResponse = await _supabase.from('claims').insert({
         'user_id': userId,
         'claim_date': formattedDate,
@@ -185,22 +185,20 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
         _selectedFileBytes!,
         fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
       );
-
-      // 3. Get Public URL
       final publicUrl = _supabase.storage.from('docs').getPublicUrl(storagePath);
 
-      // 4. Link Document in public.claim_documents
+      // Link Document in public.claim_documents
       await _supabase.from('claim_documents').insert({
         'claim_id': claimId,
         'document_url': publicUrl,
       });
-      // 4. Link Document in public.claim_documents
+      // Link Document in public.claim_documents
       await _supabase.from('claim_documents').insert({
         'claim_id': claimId,
         'document_url': publicUrl,
       });
 
-      // 5. Create a Notification (NEW)
+      // Create a Notification
       await _supabase.from('notifications').insert({
         'user_id': userId,
         'title': 'Claim Submitted',
@@ -270,7 +268,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                         controller: _amountController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')), // Only numbers and max 2 decimals
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')), 
                         ],
                         style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.black),
                         decoration: InputDecoration(

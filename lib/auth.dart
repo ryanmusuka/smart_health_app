@@ -23,19 +23,62 @@ class _AuthScreenState extends State<AuthScreen> {
   final _surnameController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
-
-  // Get the Supabase client instance
   final supabase = Supabase.instance.client;
 
   @override
   void dispose() {
-    // Always dispose controllers to prevent memory leaks
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _nameController.dispose();
     _surnameController.dispose();
     super.dispose();
+  }
+
+  // --- FORGOT PASSWORD LOGIC ---
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
+    
+    // Check if they actually typed an email first
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your valid email address in the box above first.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await supabase.auth.resetPasswordForEmail(email);
+      
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Check your inbox! 📧'),
+            content: const Text('A link has been sent to your email with further instructions on how to reset your password.'),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Got it!', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('A link has been sent to your email with further instructions on how to reset your password.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _submitAuth() async {
@@ -147,42 +190,42 @@ class _AuthScreenState extends State<AuthScreen> {
               child: Form(
                 key: _formKey,
                 child: Column(
-  mainAxisSize: MainAxisSize.min,
-  crossAxisAlignment: CrossAxisAlignment.stretch,
-  children: [
-    // --- THE HERO LOGO ---
-    Center(
-      child: Hero(
-        tag: 'smarthealth_logo', // This tag MUST match the dashboard
-        flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-          // This ensures smooth text resizing during the animation
-          return DefaultTextStyle(
-            style: DefaultTextStyle.of(toHeroContext).style,
-            child: toHeroContext.widget,
-          );
-        },
-        child: Material(
-          type: MaterialType.transparency, // Prevents yellow glitch lines during animation
-          child: Text(
-            'SmartHealth',
-            style: GoogleFonts.outfit( // A distinct, modern, rounded font
-              color: Colors.blueAccent,
-              fontWeight: FontWeight.w900, // Extra bold for a logo feel
-              fontSize: 42, // Larger on the login screen
-              letterSpacing: -1.0, // Tighter letters look more like a custom logo
-            ),
-          ),
-        ),
-      ),
-    ),
-    const SizedBox(height: 32),
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // --- THE HERO LOGO ---
+                    Center(
+                      child: Hero(
+                        tag: 'smarthealth_logo', // This tag MUST match the dashboard
+                        flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+                          // This ensures smooth text resizing during the animation
+                          return DefaultTextStyle(
+                            style: DefaultTextStyle.of(toHeroContext).style,
+                            child: toHeroContext.widget,
+                          );
+                        },
+                        child: Material(
+                          type: MaterialType.transparency, 
+                          child: Text(
+                            'SmartHealth',
+                            style: GoogleFonts.outfit( 
+                              color: Colors.blueAccent,
+                              fontWeight: FontWeight.w900, 
+                              fontSize: 42,
+                              letterSpacing: -1.0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
 
-    Text(
-      _isLogin ? 'WELCOME BACK!' : 'CREATE ACCOUNT',
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54),
-      textAlign: TextAlign.center,
-    ),
-    const SizedBox(height: 24),
+                    Text(
+                      _isLogin ? 'WELCOME BACK!' : 'CREATE ACCOUNT',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
 
                     if (!_isLogin) ...[
                       TextFormField(
@@ -229,6 +272,22 @@ class _AuthScreenState extends State<AuthScreen> {
                       obscureText: true,
                       validator: (val) => val!.length < 6 ? 'Password must be at least 6 characters' : null,
                     ),
+                    
+                    // FORGOT PASSWORD BUTTON
+                    if (_isLogin)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _resetPassword,
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(50, 30),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('Forgot Password?', style: TextStyle(color: Colors.blueAccent)),
+                        ),
+                      ),
+
                     const SizedBox(height: 16),
 
                     if (!_isLogin) ...[
@@ -244,8 +303,6 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       const SizedBox(height: 24),
                     ],
-
-                    if (_isLogin) const SizedBox(height: 8),
 
                     _isLoading
                         ? const Center(child: CircularProgressIndicator())
@@ -276,7 +333,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       child: Text(
                         _isLogin 
                             ? 'No account? Click to register.' 
-                            : 'Already registered? Login here'
+                            : 'Already registered? Login here',
+                        style: const TextStyle(color: Colors.blueAccent),
                       ),
                     ),
                   ],

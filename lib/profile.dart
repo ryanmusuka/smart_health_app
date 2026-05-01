@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shimmer/shimmer.dart';
-import 'auth.dart'; 
-import 'main.dart'; // Brings in the themeNotifier
+import 'auth.dart'; // Make sure this matches your actual auth file name
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -31,14 +30,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final userId = supabase.auth.currentUser!.id;
       
+      // Fetch both tables independently but simultaneously using the user_id
       final responses = await Future.wait([
+        // 1. Get the Profile Identity
         supabase.from('profiles').select().eq('id', userId).single(),
+        
+        // 2. Get the Medical Info. 
+        // We use maybeSingle() in case the row doesn't exist yet for a new user.
         supabase.from('medical_information').select().eq('user_id', userId).maybeSingle(),
       ]);
 
       if (mounted) {
         setState(() {
           _profileData = responses[0];
+          // If medical data exists, assign it. Otherwise, use an empty map to prevent null errors.
           _medicalData = responses[1] ?? {}; 
           _isLoading = false;
         });
@@ -54,7 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const AuthScreen()), 
+        MaterialPageRoute(builder: (context) => const AuthScreen()), // Ensure AuthScreen matches your class
         (route) => false,
       );
     }
@@ -67,10 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return initials.toUpperCase();
   }
 
-  // --- THEME AWARE HELPERS ---
-  // We pass 'isDark' into these so they know what colors to use
-  
-  Widget _buildSectionHeader(String title, bool isDark) {
+  Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 16, right: 16, top: 24, bottom: 8),
       child: Text(
@@ -78,14 +80,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+          color: Colors.grey.shade600,
           letterSpacing: 1.2,
         ),
       ),
     );
   }
 
-  Widget _buildInfoTile(String title, String? value, bool isDark, {IconData? icon, Color? iconColor}) {
+  Widget _buildInfoTile(String title, String? value, {IconData? icon, Color? iconColor}) {
     return ListTile(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -96,14 +98,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Icon(icon, color: iconColor ?? Colors.blue, size: 20),
             )
           : null,
-      title: Text(title, style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 14)),
+      title: Text(title, style: const TextStyle(color: Colors.black54, fontSize: 14)),
       subtitle: Text(
         (value == null || value.isEmpty) ? 'Not provided' : value, 
-        style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 16, fontWeight: FontWeight.w500),
+        style: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w500),
       ),
     );
   }
 
+  // --- CUSTOM PROFILE SKELETON LOADER ---
   Widget _buildSkeletonLoader() {
     return Shimmer.fromColors(
       baseColor: Colors.grey.shade300,
@@ -112,12 +115,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.only(bottom: 40, top: 20),
         child: Column(
           children: [
+            // Fake Avatar
             Container(width: 100, height: 100, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
             const SizedBox(height: 16),
+            // Fake Name
             Container(width: 180, height: 24, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
             const SizedBox(height: 8),
+            // Fake Membership Number
             Container(width: 140, height: 16, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
             const SizedBox(height: 32),
+            
+            // Fake Cards Sections
             for (int i = 0; i < 3; i++) ...[
               Align(
                 alignment: Alignment.centerLeft,
@@ -141,43 +149,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Check if the app is currently in dark mode
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      // 2. Make the background color respond to the theme
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF9FAFC), 
+      backgroundColor: const Color(0xFFF9FAFC),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // 3. Make the App Bar text and icon respond to the theme
-        title: Text('Profile', style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold)), 
-        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+        title: const Text('Profile', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: _isLoading
-          ? _buildSkeletonLoader() 
+          ? _buildSkeletonLoader() // Triggers the Shimmer while fetching
           : _profileData == null
               ? const Center(child: Text('Failed to load profile data.'))
-              : _buildProfileContent(isDark), // Pass the theme info down
+              : _buildProfileContent(),
     );
   }
 
-  Widget _buildProfileContent(bool isDark) {
+  // Separated the content into its own method to keep the build method clean
+  Widget _buildProfileContent() {
     final firstName = _profileData!['first_name'] as String?;
     final lastName = _profileData!['last_name'] as String?;
     final fullName = '${firstName ?? ''} ${lastName ?? ''}'.trim();
     final membershipNum = _profileData!['membership_number'] as String?;
-
-    // 4. Define the container colors based on the theme
-    final containerColor = isDark ? Colors.grey[900] : Colors.white;
-    final borderColor = isDark ? Colors.grey[800]! : Colors.grey.shade200;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- THE HEADER (IDENTITY) ---
+          // --- 1. THE HEADER (IDENTITY) ---
           Center(
             child: Column(
               children: [
@@ -193,94 +193,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 16),
                 Text(
                   fullName.isEmpty ? 'Unknown User' : fullName,
-                  // Respond to theme
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   membershipNum ?? 'No Membership Number',
-                  style: TextStyle(fontSize: 16, color: isDark ? Colors.grey.shade400 : Colors.grey.shade500, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 16, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 24),
               ],
             ),
           ),
 
-          // --- MEDICAL INFORMATION ---
-          _buildSectionHeader('Medical Info & Risks', isDark),
+          // --- 2. MEDICAL INFORMATION ---
+          _buildSectionHeader('Medical Info & Risks'),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(color: containerColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: borderColor)),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
             child: Column(
               children: [
-                _buildInfoTile('Blood Type', _medicalData['blood_type'], isDark, icon: Icons.water_drop, iconColor: Colors.redAccent),
-                Divider(height: 1, indent: 56, color: borderColor),
-                _buildInfoTile('Allergies', _medicalData['allergies'], isDark, icon: Icons.warning_amber_rounded, iconColor: Colors.red),
-                Divider(height: 1, indent: 56, color: borderColor),
-                _buildInfoTile('Chronic Conditions', _medicalData['chronic_conditions'], isDark, icon: Icons.medical_services_outlined, iconColor: Colors.orange),
-                Divider(height: 1, indent: 56, color: borderColor),
-                _buildInfoTile('Current Medications', _medicalData['current_medications'], isDark, icon: Icons.medication, iconColor: Colors.teal),
+                _buildInfoTile('Blood Type', _medicalData['blood_type'], icon: Icons.water_drop, iconColor: Colors.redAccent),
+                const Divider(height: 1, indent: 56),
+                _buildInfoTile('Allergies', _medicalData['allergies'], icon: Icons.warning_amber_rounded, iconColor: Colors.red),
+                const Divider(height: 1, indent: 56),
+                _buildInfoTile('Chronic Conditions', _medicalData['chronic_conditions'], icon: Icons.medical_services_outlined, iconColor: Colors.orange),
+                const Divider(height: 1, indent: 56),
+                _buildInfoTile('Current Medications', _medicalData['current_medications'], icon: Icons.medication, iconColor: Colors.teal),
               ],
             ),
           ),
 
-          // --- EMERGENCY CONTACT ---
-          _buildSectionHeader('Emergency Contact', isDark),
+          // --- 3. EMERGENCY CONTACT & SETTINGS ---
+          _buildSectionHeader('Emergency Contact'),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(color: containerColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: borderColor)),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
             child: Column(
               children: [
-                _buildInfoTile('Name', _profileData!['emergency_contact_name'], isDark, icon: Icons.person_outline, iconColor: Colors.blueGrey),
-                Divider(height: 1, indent: 56, color: borderColor),
-                _buildInfoTile('Phone Number', _profileData!['emergency_contact_phone'], isDark, icon: Icons.phone, iconColor: Colors.green),
+                _buildInfoTile('Name', _profileData!['emergency_contact_name'], icon: Icons.person_outline, iconColor: Colors.blueGrey),
+                const Divider(height: 1, indent: 56),
+                _buildInfoTile('Phone Number', _profileData!['emergency_contact_phone'], icon: Icons.phone, iconColor: Colors.green),
               ],
             ),
           ),
 
-          // --- PREFERENCES ---
-          _buildSectionHeader('Preferences', isDark),
+          _buildSectionHeader('Preferences'),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(color: containerColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: borderColor)),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
             child: Column(
               children: [
                 SwitchListTile(
-                  title: Text('Push Notifications', style: TextStyle(fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black)),
+                  title: const Text('Push Notifications', style: TextStyle(fontWeight: FontWeight.w500)),
                   secondary: const Icon(Icons.notifications_active_outlined, color: Colors.blueAccent),
                   activeColor: Colors.blueAccent,
                   value: _notificationsEnabled,
                   onChanged: (bool value) => setState(() => _notificationsEnabled = value),
                 ),
-                Divider(height: 1, indent: 56, color: borderColor),
+                const Divider(height: 1, indent: 56),
                 SwitchListTile(
-                  title: Text('FaceID / Biometric Login', style: TextStyle(fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black)),
+                  title: const Text('FaceID / Biometric Login', style: TextStyle(fontWeight: FontWeight.w500)),
                   secondary: const Icon(Icons.fingerprint, color: Colors.blueAccent),
                   activeColor: Colors.blueAccent,
                   value: _biometricsEnabled,
                   onChanged: (bool value) => setState(() => _biometricsEnabled = value),
-                ),
-                Divider(height: 1, indent: 56, color: borderColor),
-                
-                // 5. THE FIX: Wrap the Theme Switch in a ValueListenableBuilder
-                ValueListenableBuilder<ThemeMode>(
-                  valueListenable: themeNotifier,
-                  builder: (context, currentMode, child) {
-                    final isCurrentlyDark = currentMode == ThemeMode.dark;
-                    return SwitchListTile(
-                      title: Text('Dark Mode', style: TextStyle(fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black)),
-                      secondary: Icon(
-                        isCurrentlyDark ? Icons.dark_mode : Icons.light_mode,
-                        color: Colors.blueAccent,
-                      ),
-                      activeColor: Colors.blueAccent,
-                      value: isCurrentlyDark, 
-                      onChanged: (bool newValue) {
-                        // This updates the global variable, triggering the whole app to rebuild!
-                        themeNotifier.value = newValue ? ThemeMode.dark : ThemeMode.light;
-                      },
-                    );
-                  },
                 ),
               ],
             ),

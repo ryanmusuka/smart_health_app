@@ -26,14 +26,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   // --- SORTING LOGIC ---
   void _sortNotifications() {
     _notifications.sort((a, b) {
-      // 1. Unread items (Important) ALWAYS go to the top
       bool aIsRead = a['is_read'] ?? true;
       bool bIsRead = b['is_read'] ?? true;
       
       if (!aIsRead && bIsRead) return -1; // 'a' is unread, move it up
       if (aIsRead && !bIsRead) return 1;  // 'b' is unread, move it up
 
-      // 2. If both have the same read status, sort by Date (Newest first)
+      // If both have the same read status, sort by Date (Newest first)
       DateTime dateA = DateTime.parse(a['created_at']);
       DateTime dateB = DateTime.parse(b['created_at']);
       return dateB.compareTo(dateA); 
@@ -65,7 +64,7 @@ void _setupRealtimeNotifications() {
 
   @override
   void dispose() {
-    _notificationSubscription.cancel(); // Close the connection when leaving the screen
+    _notificationSubscription.cancel(); 
     super.dispose();
   }
 
@@ -78,12 +77,9 @@ Future<void> _toggleReadStatus(dynamic id, bool currentStatus) async {
     setState(() {
       final index = _notifications.indexWhere((note) => note['id'] == id);
       if (index != -1) {
-        // Create a safe, mutable copy of the notification map
         Map<String, dynamic> updatedNote = Map<String, dynamic>.from(_notifications[index]);
         
-        // Flip the read status
         updatedNote['is_read'] = newStatus;
-        
         // Replace the old note with the updated one
         _notifications[index] = updatedNote;
         
@@ -107,7 +103,7 @@ Future<void> _toggleReadStatus(dynamic id, bool currentStatus) async {
           Map<String, dynamic> revertedNote = Map<String, dynamic>.from(_notifications[index]);
           revertedNote['is_read'] = currentStatus;
           _notifications[index] = revertedNote;
-          _sortNotifications(); // Re-sort back to original state
+          _sortNotifications(); 
         }
       });
       
@@ -125,8 +121,6 @@ Future<void> _deleteNotification(dynamic id) async {
     final dynamic deletedNote = index != -1 ? _notifications[index] : null;
 
     if (index == -1) return;
-
-    // --- OPTIMISTIC UI UPDATE ---
     // Instantly remove it from the screen
     setState(() {
       _notifications.removeAt(index);
@@ -174,7 +168,6 @@ Future<void> _deleteNotification(dynamic id) async {
     } else if (noteDay == yesterday) {
       return 'Yesterday';
     } else {
-      // Formats as "12 April"
       List<String> months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       return '${noteDate.day} ${months[noteDate.month - 1]}';
     }
@@ -198,7 +191,7 @@ Future<void> _deleteNotification(dynamic id) async {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey[200], // PayPal's signature light grey icon background
+        color: Colors.grey[200],
         shape: BoxShape.circle,
       ),
       child: Icon(iconData, color: Colors.black87, size: 24),
@@ -207,10 +200,9 @@ Future<void> _deleteNotification(dynamic id) async {
 
   // --- 3. THE SKELETON LOADER ---
   Widget _buildSkeletonLoader() {
-    // 1. Wrap your entire ListView in the Shimmer widget
     return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,      // The default static color
-      highlightColor: Colors.grey.shade100, // The light color that sweeps across
+      baseColor: Colors.grey.shade300,     
+      highlightColor: Colors.grey.shade100, 
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 16),
         itemCount: 8, 
@@ -236,13 +228,12 @@ Future<void> _deleteNotification(dynamic id) async {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 4),
-                      // Notice the colors are all white now, Shimmer handles the grey!
-                      Container(
+                       Container(
                         width: 200, 
                         height: 16, 
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(4), // Added slight rounding for a modern look
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -276,7 +267,7 @@ Future<void> _deleteNotification(dynamic id) async {
 
   @override
   Widget build(BuildContext context) {
-    // Group the notifications based on our logic
+    // Group the notifications based on the logic
     Map<String, List<dynamic>> groupedNotes = {};
     for (var note in _notifications) {
       String group = _getGroupHeader(note);
@@ -309,7 +300,6 @@ Future<void> _deleteNotification(dynamic id) async {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // The YouTube-style Subheading
                         Padding(
                           padding: const EdgeInsets.only(left: 16, top: 24, bottom: 8),
                           child: Text(
@@ -326,7 +316,6 @@ Future<void> _deleteNotification(dynamic id) async {
                         ...items.map((note) {
                           final isRead = note['is_read'] as bool;
                           return Container(
-                            // Give unread items a very subtle background tint like YouTube does
                             color: isRead ? Colors.transparent : Colors.blue.withOpacity(0.05),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -346,12 +335,10 @@ Future<void> _deleteNotification(dynamic id) async {
                                 note['message'],
                                 style: const TextStyle(color: Colors.black87, height: 1.3),
                               ),
-                              // YouTube style three-dot menu
                               trailing: PopupMenuButton<String>(
                                 icon: const Icon(Icons.more_vert, color: Colors.grey),
-                                color: Colors.white, // Keeps the dropdown background clean
+                                color: Colors.white, 
                                 onSelected: (value) {
-                                  // This triggers when the user taps an option
                                   if (value == 'toggle_read') {
                                     _toggleReadStatus(note['id'], isRead);
                                   } else if (value == 'delete') {

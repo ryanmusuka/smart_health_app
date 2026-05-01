@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart'; // <-- Added Shimmer import
+import 'package:shimmer/shimmer.dart'; 
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -22,7 +22,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   
   // Filtering & Search State
   String _searchQuery = '';
-  String _activeFilter = 'All'; // 'All', 'Pending', 'Approved', 'Rejected'
+  String _activeFilter = 'All'; 
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -215,7 +215,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   // --- BOTTOM SHEET (DATE FILTER) ---
   void _showDateFilterBottomSheet() {
-    // Temporary variables for the bottom sheet state before "Apply" is pressed
     String tempDateFilter = _activeDateFilter;
     DateTimeRange? tempCustomRange = _customDateRange;
 
@@ -339,8 +338,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   // --- UI WIDGETS ---
-
-  // <-- THE NEW SKELETON LOADER FOR HISTORY -->
   Widget _buildSkeletonLoader() {
     return Shimmer.fromColors(
       baseColor: Colors.grey.shade300,
@@ -536,12 +533,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.transparent, // Updated to match Notifications
+        backgroundColor: Colors.transparent, 
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black), // Added IconTheme
+        iconTheme: const IconThemeData(color: Colors.black), 
         title: const Text(
           'Activity', 
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold), // Matched font style
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
       ),
       body: Column(
@@ -597,10 +594,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       Icons.tune, 
                       color: _activeDateFilter != 'All Time' ? Colors.blueAccent : Colors.black87,
                     ),
-                    onPressed: _showDateFilterBottomSheet, // Hooked up!
+                    onPressed: _showDateFilterBottomSheet,
                   ),
                 ),
-              ], // FIXED: Added missing closing bracket for the Row children
+              ], 
             ),
           ),
 
@@ -621,7 +618,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           // --- 3. TIMELINE & CLAIM CARDS ---
           Expanded(
             child: _isLoading 
-              ? _buildSkeletonLoader() // <-- Replaced CircularProgressIndicator here
+              ? _buildSkeletonLoader() 
               : claimsToDisplay.isEmpty
                 ? Center(
                     child: Column(
@@ -643,7 +640,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Group Header ("This Month", "March 2024")
                           Padding(
                             padding: const EdgeInsets.only(left: 16, right: 16, top: 24, bottom: 8),
                             child: Text(
