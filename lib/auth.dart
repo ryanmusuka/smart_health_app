@@ -100,21 +100,17 @@ class _AuthScreenState extends State<AuthScreen> {
         );
         
         if (mounted) {  
-          // --- THE NEW ANIMATED TRANSITION ---
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) => const DashboardScreen(),
-              transitionDuration: const Duration(milliseconds: 600), // Smooth, deliberate timing
+              transitionDuration: const Duration(milliseconds: 600), 
               transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                // 1. The Slide Animation (Starts slightly lower and moves up to center)
                 const beginOffset = Offset(0.0, 0.05); 
                 const endOffset = Offset.zero;
-                const curve = Curves.easeOutCubic; // Starts fast, settles gently
+                const curve = Curves.easeOutCubic;
 
                 var slideTween = Tween(begin: beginOffset, end: endOffset).chain(CurveTween(curve: curve));
-                
-                // 2. The Fade Animation (Starts invisible, fades to full opacity)
                 var fadeTween = Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
 
                 return FadeTransition(
@@ -129,7 +125,7 @@ class _AuthScreenState extends State<AuthScreen> {
           );
         }
       } else {
-        // ACTUAL SUPABASE REGISTRATION
+        // SUPABASE REGISTRATION
         final name = _nameController.text.trim();
         final surname = _surnameController.text.trim();
         
@@ -159,7 +155,6 @@ class _AuthScreenState extends State<AuthScreen> {
         );
       }
     } catch (e) {
-      // Catch any other unexpected errors
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('An unexpected error occurred.'), backgroundColor: Colors.red),
@@ -177,12 +172,12 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blueAccent, // Light background color for better contrast
+      backgroundColor: Colors.blueAccent,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Card(
-            elevation: 4, // Adds a subtle drop shadow 
+            elevation: 4, 
             color: const Color(0xFFF9FAF6),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -196,9 +191,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     // --- THE HERO LOGO ---
                     Center(
                       child: Hero(
-                        tag: 'smarthealth_logo', // This tag MUST match the dashboard
+                        tag: 'smarthealth_logo',
                         flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-                          // This ensures smooth text resizing during the animation
+                          
                           return DefaultTextStyle(
                             style: DefaultTextStyle.of(toHeroContext).style,
                             child: toHeroContext.widget,
