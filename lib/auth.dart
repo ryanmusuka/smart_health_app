@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import "dashboard.dart";
+import 'package:google_fonts/google_fonts.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -11,8 +12,8 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   // 1. Ephemeral State
-  bool _isLogin = false; // Register shows first by default
-  bool _isLoading = false; // To show a loading spinner during network calls
+  bool _isLogin = true;
+  bool _isLoading = false; 
 
   // 2. Controllers
   final _emailController = TextEditingController();
@@ -56,9 +57,32 @@ class _AuthScreenState extends State<AuthScreen> {
         );
         
         if (mounted) {  
+          // --- THE NEW ANIMATED TRANSITION ---
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => const DashboardScreen(),
+              transitionDuration: const Duration(milliseconds: 600), // Smooth, deliberate timing
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                // 1. The Slide Animation (Starts slightly lower and moves up to center)
+                const beginOffset = Offset(0.0, 0.05); 
+                const endOffset = Offset.zero;
+                const curve = Curves.easeOutCubic; // Starts fast, settles gently
+
+                var slideTween = Tween(begin: beginOffset, end: endOffset).chain(CurveTween(curve: curve));
+                
+                // 2. The Fade Animation (Starts invisible, fades to full opacity)
+                var fadeTween = Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
+
+                return FadeTransition(
+                  opacity: animation.drive(fadeTween),
+                  child: SlideTransition(
+                    position: animation.drive(slideTween),
+                    child: child,
+                  ),
+                );
+              },
+            ),
           );
         }
       } else {
@@ -69,7 +93,6 @@ class _AuthScreenState extends State<AuthScreen> {
         await supabase.auth.signUp(
           email: email,
           password: password,
-          // We pass name and surname as metadata so it's stored in Supabase's auth.users table
           data: {
             'first_name': name,
             'last_name': surname,
@@ -111,7 +134,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.blueAccent, // Light background color for better contrast
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -124,16 +147,42 @@ class _AuthScreenState extends State<AuthScreen> {
               child: Form(
                 key: _formKey,
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      _isLogin ? 'WELCOME BACK!' : 'CREATE ACCOUNT',
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                      
-                    ),
-                    const SizedBox(height: 24),
+  mainAxisSize: MainAxisSize.min,
+  crossAxisAlignment: CrossAxisAlignment.stretch,
+  children: [
+    // --- THE HERO LOGO ---
+    Center(
+      child: Hero(
+        tag: 'smarthealth_logo', // This tag MUST match the dashboard
+        flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+          // This ensures smooth text resizing during the animation
+          return DefaultTextStyle(
+            style: DefaultTextStyle.of(toHeroContext).style,
+            child: toHeroContext.widget,
+          );
+        },
+        child: Material(
+          type: MaterialType.transparency, // Prevents yellow glitch lines during animation
+          child: Text(
+            'SmartHealth',
+            style: GoogleFonts.outfit( // A distinct, modern, rounded font
+              color: Colors.blueAccent,
+              fontWeight: FontWeight.w900, // Extra bold for a logo feel
+              fontSize: 42, // Larger on the login screen
+              letterSpacing: -1.0, // Tighter letters look more like a custom logo
+            ),
+          ),
+        ),
+      ),
+    ),
+    const SizedBox(height: 32),
+
+    Text(
+      _isLogin ? 'WELCOME BACK!' : 'CREATE ACCOUNT',
+      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54),
+      textAlign: TextAlign.center,
+    ),
+    const SizedBox(height: 24),
 
                     if (!_isLogin) ...[
                       TextFormField(
@@ -218,16 +267,18 @@ class _AuthScreenState extends State<AuthScreen> {
                     
                     const SizedBox(height: 16),
 
-                    // This button ONLY shows on the Register screen now
-                    if (!_isLogin)
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _isLogin = true; 
-                          });
-                        },
-                        child: const Text('Already registered? Login here'),
+                   TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _isLogin = !_isLogin; 
+                        });
+                      },
+                      child: Text(
+                        _isLogin 
+                            ? 'No account? Click to register.' 
+                            : 'Already registered? Login here'
                       ),
+                    ),
                   ],
                 ),
               ),

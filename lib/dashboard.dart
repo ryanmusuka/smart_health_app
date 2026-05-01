@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart'; 
+import 'package:google_fonts/google_fonts.dart';
 import "notifications.dart";
 import "profile.dart";
 import "history.dart";
@@ -126,7 +128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // 2. If it returns true (a successful submission), refresh the data!
     if (shouldRefresh == true) {
       setState(() {
-        _isLoading = true; // Show loading spinner while fetching
+        _isLoading = true; 
       });
       await _fetchDashboardData(); // Refreshes Profile, Recent Claims, and Pending Count
     }
@@ -239,6 +241,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // --- WIDGET BUILDERS ---
+
+  // <-- ADDED: SKELETON LOADER FOR DASHBOARD -->
+  Widget _buildSkeletonLoader() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Fake Greeting
+            Container(
+              width: 200,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Fake Membership Card
+            Container(
+              width: double.infinity,
+              height: 180,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            const SizedBox(height: 30),
+
+            // Fake Recent Activity Title
+            Container(
+              width: 140,
+              height: 24,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(height: 15),
+
+            // 3 Fake Recent Claim Cards
+            ...List.generate(3, (index) => Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildHomeDashboard() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20.0),
@@ -354,19 +415,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       // --- THE APP BAR ---
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        
-        centerTitle: false, 
-        title: const Text(
-          'SmartHealth',
-          style: TextStyle(
-            color: Colors.blueAccent, 
-            fontWeight: FontWeight.bold, 
-            fontSize: 24,
-            height: 1.0, 
-          ),
+  backgroundColor: Colors.transparent,
+  elevation: 0,
+  centerTitle: false, 
+  title: Hero(
+    tag: 'smarthealth_logo', 
+    child: Material(
+      type: MaterialType.transparency,
+      child: Text(
+        'SmartHealth',
+        style: GoogleFonts.outfit(
+          color: Colors.blueAccent, 
+          fontWeight: FontWeight.w900, 
+          fontSize: 24, // Shrinks down gracefully to fit the app bar
+          letterSpacing: -0.5,
+          height: 1.0, 
         ),
+      ),
+    ),
+  ),
         
         actions: [
           // THE NEW NOTIFICATION BADGE STACK
@@ -411,7 +478,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // --- THE BODY ---
       body: _currentIndex == 0
           ? (_isLoading 
-              ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
+              ? _buildSkeletonLoader() // <-- CHANGED: Used Shimmer instead of CircularProgressIndicator
               : _buildHomeDashboard())
           : const HistoryScreen(), 
 

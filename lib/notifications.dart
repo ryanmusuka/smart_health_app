@@ -225,7 +225,7 @@ Future<void> _deleteNotification(dynamic id) async {
                   width: 48,
                   height: 48,
                   decoration: const BoxDecoration(
-                    color: Colors.white, // Changed to white so Shimmer can paint over it
+                    color: Colors.white, 
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -273,7 +273,7 @@ Future<void> _deleteNotification(dynamic id) async {
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     // Group the notifications based on our logic
