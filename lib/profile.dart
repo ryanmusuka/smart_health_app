@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shimmer/shimmer.dart';
-import 'auth.dart'; // Make sure this matches your actual auth file name
+import 'auth.dart'; 
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
